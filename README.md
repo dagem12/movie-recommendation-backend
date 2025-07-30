@@ -1,7 +1,3 @@
-Here is a **comprehensive and professional documentation (README)** for your **Movie Recommendation Backend** project, merging everything you've shared — structured for clarity, completeness, and deployment readiness:
-
----
-
 # Movie Recommendation Backend
 
 A real-world Django backend application providing movie recommendations using third-party APIs, JWT-based user authentication, Redis caching for high performance, and fully documented APIs for seamless frontend integration.
