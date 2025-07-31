@@ -1,0 +1,14 @@
+# Environment variables
+.env
+
+# Python virtual environment folder
+env/
+venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# VSCode settings folder
+.vscode/
