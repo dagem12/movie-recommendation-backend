@@ -1,5 +1,5 @@
 # Environment variables
-.env
+movierec_backend/.env
 
 # Python virtual environment folder
 env/
