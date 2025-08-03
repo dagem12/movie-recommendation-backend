@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'users',
+    'utils',
+    'movies',
 ]
 
 MIDDLEWARE = [
@@ -77,7 +79,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'movierec_backend.wsgi.application'
 
-
+TMDB_API_KEY = config('TMDB_API_KEY')
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
