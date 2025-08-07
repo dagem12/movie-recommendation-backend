@@ -64,6 +64,7 @@ class TrendingMoviesView(APIView):
             client = TMDbClient()
             movies = client.get_trending_movies(time_window)
             
+            
             # Cache the result
             cache_service.set_trending_movies(movies, time_window)
             

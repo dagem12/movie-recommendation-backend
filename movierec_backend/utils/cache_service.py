@@ -353,5 +353,6 @@ class RedisCacheService:
             logger.error(f"Redis error while clearing caches: {str(e)}")
             return False
 
+
 # Global cache service instance
 cache_service = RedisCacheService() 
