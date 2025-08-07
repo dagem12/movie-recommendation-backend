@@ -130,8 +130,7 @@ class AddFavoriteMovieView(generics.CreateAPIView):
         
         # Invalidate user cache since favorites count changed
         cache_service.invalidate_user_cache(request.user.id)
-        
-        
+         
         return Response(
             FavoriteMovieSerializer(favorite).data,
             status=status.HTTP_201_CREATED
