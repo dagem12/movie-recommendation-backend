@@ -23,6 +23,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from utils.tmdb_client import TMDbClient
+from utils.cache_service import cache_service
 from utils.exceptions import ExternalAPIException, ValidationAPIException
 from utils.decorators import handle_api_errors, log_api_call
 import logging
@@ -49,13 +50,28 @@ class TrendingMoviesView(APIView):
             if time_window not in ['day', 'week']:
                 raise ValidationAPIException("time_window must be 'day' or 'week'")
             
+            # Try to get from cache first
+            cached_movies = cache_service.get_trending_movies(time_window)
+            if cached_movies:
+                return Response({
+                    'success': True,
+                    'data': cached_movies,
+                    'time_window': time_window,
+                    'cached': True
+                })
+            
+            # If not in cache, fetch from API
             client = TMDbClient()
             movies = client.get_trending_movies(time_window)
+            
+            # Cache the result
+            cache_service.set_trending_movies(movies, time_window)
             
             return Response({
                 'success': True,
                 'data': movies,
-                'time_window': time_window
+                'time_window': time_window,
+                'cached': False
             })
             
         except ExternalAPIException as e:
@@ -227,12 +243,26 @@ class MovieRecommendationsView(APIView):
             if not movie_id or not str(movie_id).isdigit():
                 raise ValidationAPIException("Movie ID must be a valid integer")
             
+            # Try to get from cache first
+            cached_recommendations = cache_service.get_movie_recommendations(movie_id)
+            if cached_recommendations:
+                return Response({
+                    'success': True,
+                    'data': cached_recommendations,
+                    'cached': True
+                })
+            
+            # If not in cache, fetch from API
             client = TMDbClient()
             recommendations = client.get_movie_recommendations(movie_id)
             
+            # Cache the result
+            cache_service.set_movie_recommendations(movie_id, recommendations)
+            
             return Response({
                 'success': True,
-                'data': recommendations
+                'data': recommendations,
+                'cached': False
             })
             
         except ValidationAPIException as e:

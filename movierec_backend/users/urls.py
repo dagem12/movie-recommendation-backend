@@ -3,6 +3,7 @@ from .views import (
     RegisterView, 
     LoginView,
     RefreshTokenView,
+    UserInfoView,
     FavoriteMovieListView, 
     AddFavoriteMovieView, 
     RemoveFavoriteMovieView, 
@@ -16,8 +17,9 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('refresh/', RefreshTokenView.as_view(), name='refresh'),
     
-    # User registration
+    # User endpoints
     path('register/', RegisterView.as_view(), name='register'),
+    path('profile/', UserInfoView.as_view(), name='user-info'),
     
     # Favorite movies endpoints
     path('favorites/', FavoriteMovieListView.as_view(), name='favorite-list'),
