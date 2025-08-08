@@ -141,7 +141,6 @@ def rate_limit(max_requests=100, window_seconds=60):
     - Configurable limits and time windows
     - Logs rate limit checks for monitoring
     
-    Note: In production, consider using django-ratelimit or similar
     """
     def decorator(func):
         @functools.wraps(func)
@@ -166,7 +165,7 @@ def cache_response(timeout=300):
     - Configurable cache timeouts
     - Logs cache attempts for monitoring
     
-    Note: In production, consider using Django's cache framework
+
     """
     def decorator(func):
         @functools.wraps(func)

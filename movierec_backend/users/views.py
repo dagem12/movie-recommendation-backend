@@ -81,7 +81,6 @@ class RegisterView(generics.CreateAPIView):
         response = super().create(request, *args, **kwargs)
         
         # Invalidate any related caches if needed
-        # Note: New user won't have cached data yet, but this is good practice
         if response.status_code == 201:
             user_id = response.data.get('id')
             if user_id:
