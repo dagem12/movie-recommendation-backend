@@ -10,7 +10,7 @@ A high-performance Django REST API for movie recommendations with intelligent ca
 ## 🚀 Features
 
 ### 🎯 Core Functionality
-- **Movie Recommendations** - AI-powered recommendations via TMDB API
+- **Movie Recommendations** - recommendations via TMDB API
 - **Trending Movies** - Real-time trending movies (daily/weekly)
 - **Movie Search** - Full-text search across TMDB database
 - **User Authentication** - JWT-based secure authentication
@@ -160,7 +160,6 @@ Visit: **http://localhost:8000/api/docs/**
 ### 🎯 Smart Caching Strategy
 - **Pagination-Aware**: Each page cached individually
 - **Performance Boost**: 58% faster response times
-- **Cache Keys**: `trending_movies:day:page:1`, `recommended_movies:123:page:2`
 - **TTL**: 1 hour for movies, 15 minutes for user data
 
 ### 📄 Pagination Implementation
@@ -221,14 +220,6 @@ curl "http://localhost:8000/api/movies/trending/?time_window=day&page=2"
 curl "http://localhost:8000/api/movies/trending/?time_window=day&page=3"
 ```
 
-## 📈 Performance Metrics
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Response Time** | 500ms | 50ms | 90% faster |
-| **API Calls** | 4 calls | 1 call | 75% reduction |
-| **Cache Hit Rate** | 25% | 85% | 240% increase |
-| **User Experience** | Inconsistent | Consistent | Smooth pagination |
 
 ## 🚀 Deployment
 
