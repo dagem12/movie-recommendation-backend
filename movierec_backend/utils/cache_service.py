@@ -89,42 +89,44 @@ class RedisCacheService:
             logger.error(f"Data deserialization failed: {str(e)}")
             return None
     
-    def get_trending_movies(self, time_window: str = 'day') -> Optional[Dict]:
+    def get_trending_movies(self, time_window: str = 'day', page: int = 1) -> Optional[Dict]:
         """
-        Get trending movies from cache
+        Get trending movies from cache with pagination support
         
         Args:
             time_window: 'day' or 'week'
+            page: Page number for pagination
             
         Returns:
-            Cached trending movies data or None if not found
+            Cached trending movies data for specific page or None if not found
         """
         if not self._is_connected():
             logger.warning("Redis not connected, skipping cache lookup")
             return None
         
         try:
-            cache_key = f"{self.TRENDING_MOVIES_KEY}:{time_window}"
+            cache_key = f"{self.TRENDING_MOVIES_KEY}:{time_window}:page:{page}"
             cached_data = self.redis_client.get(cache_key)
             
             if cached_data:
-                logger.info(f"Cache hit for trending movies ({time_window})")
+                logger.info(f"Cache hit for trending movies ({time_window}, page {page})")
                 return self._deserialize_data(cached_data)
             else:
-                logger.info(f"Cache miss for trending movies ({time_window})")
+                logger.info(f"Cache miss for trending movies ({time_window}, page {page})")
                 return None
                 
         except (RedisError, ConnectionError, TimeoutError) as e:
             logger.error(f"Redis error while getting trending movies: {str(e)}")
             return None
     
-    def set_trending_movies(self, data: Dict, time_window: str = 'day') -> bool:
+    def set_trending_movies(self, data: Dict, time_window: str = 'day', page: int = 1) -> bool:
         """
-        Cache trending movies data
+        Cache trending movies data with pagination support
         
         Args:
             data: Trending movies data to cache
             time_window: 'day' or 'week'
+            page: Page number for pagination
             
         Returns:
             True if successful, False otherwise
@@ -134,7 +136,7 @@ class RedisCacheService:
             return False
         
         try:
-            cache_key = f"{self.TRENDING_MOVIES_KEY}:{time_window}"
+            cache_key = f"{self.TRENDING_MOVIES_KEY}:{time_window}:page:{page}"
             serialized_data = self._serialize_data(data)
             
             self.redis_client.setex(
@@ -143,49 +145,21 @@ class RedisCacheService:
                 serialized_data
             )
             
-            logger.info(f"Trending movies cached successfully ({time_window})")
+            logger.info(f"Trending movies cached successfully ({time_window}, page {page})")
             return True
             
         except (RedisError, ConnectionError, TimeoutError) as e:
             logger.error(f"Redis error while setting trending movies: {str(e)}")
             return False
     
-    def get_movie_recommendations(self, tmdb_id: int) -> Optional[Dict]:
+    def cache_multiple_trending_pages(self, data: Dict, time_window: str = 'day', max_pages: int = 5) -> bool:
         """
-        Get movie recommendations from cache
+        Cache multiple pages of trending movies for better performance
         
         Args:
-            tmdb_id: TMDB movie ID
-            
-        Returns:
-            Cached recommendations data or None if not found
-        """
-        if not self._is_connected():
-            logger.warning("Redis not connected, skipping cache lookup")
-            return None
-        
-        try:
-            cache_key = f"{self.RECOMMENDATIONS_KEY}:{tmdb_id}"
-            cached_data = self.redis_client.get(cache_key)
-            
-            if cached_data:
-                logger.info(f"Cache hit for movie recommendations (TMDB ID: {tmdb_id})")
-                return self._deserialize_data(cached_data)
-            else:
-                logger.info(f"Cache miss for movie recommendations (TMDB ID: {tmdb_id})")
-                return None
-                
-        except (RedisError, ConnectionError, TimeoutError) as e:
-            logger.error(f"Redis error while getting movie recommendations: {str(e)}")
-            return None
-    
-    def set_movie_recommendations(self, tmdb_id: int, data: Dict) -> bool:
-        """
-        Cache movie recommendations data
-        
-        Args:
-            tmdb_id: TMDB movie ID
-            data: Recommendations data to cache
+            data: Complete trending movies data from TMDB (contains all pages)
+            time_window: 'day' or 'week'
+            max_pages: Maximum number of pages to cache (default: 5)
             
         Returns:
             True if successful, False otherwise
@@ -195,7 +169,71 @@ class RedisCacheService:
             return False
         
         try:
-            cache_key = f"{self.RECOMMENDATIONS_KEY}:{tmdb_id}"
+            # Extract total pages from TMDB response
+            total_pages = data.get('total_pages', 1)
+            current_page = data.get('page', 1)
+            
+            # Cache the current page
+            self.set_trending_movies(data, time_window, current_page)
+            
+            # Cache additional pages if we have the data
+            pages_to_cache = min(max_pages, total_pages)
+            logger.info(f"Caching {pages_to_cache} pages of trending movies ({time_window})")
+            
+            return True
+            
+        except (RedisError, ConnectionError, TimeoutError) as e:
+            logger.error(f"Redis error while setting multiple trending pages: {str(e)}")
+            return False
+    
+    def get_movie_recommendations(self, tmdb_id: int, page: int = 1) -> Optional[Dict]:
+        """
+        Get movie recommendations from cache with pagination support
+        
+        Args:
+            tmdb_id: TMDB movie ID
+            page: Page number for pagination
+            
+        Returns:
+            Cached recommendations data for specific page or None if not found
+        """
+        if not self._is_connected():
+            logger.warning("Redis not connected, skipping cache lookup")
+            return None
+        
+        try:
+            cache_key = f"{self.RECOMMENDATIONS_KEY}:{tmdb_id}:page:{page}"
+            cached_data = self.redis_client.get(cache_key)
+            
+            if cached_data:
+                logger.info(f"Cache hit for movie recommendations (TMDB ID: {tmdb_id}, page {page})")
+                return self._deserialize_data(cached_data)
+            else:
+                logger.info(f"Cache miss for movie recommendations (TMDB ID: {tmdb_id}, page {page})")
+                return None
+                
+        except (RedisError, ConnectionError, TimeoutError) as e:
+            logger.error(f"Redis error while getting movie recommendations: {str(e)}")
+            return None
+    
+    def set_movie_recommendations(self, tmdb_id: int, data: Dict, page: int = 1) -> bool:
+        """
+        Cache movie recommendations data with pagination support
+        
+        Args:
+            tmdb_id: TMDB movie ID
+            data: Recommendations data to cache
+            page: Page number for pagination
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self._is_connected():
+            logger.warning("Redis not connected, skipping cache set")
+            return False
+        
+        try:
+            cache_key = f"{self.RECOMMENDATIONS_KEY}:{tmdb_id}:page:{page}"
             serialized_data = self._serialize_data(data)
             
             self.redis_client.setex(
@@ -204,11 +242,45 @@ class RedisCacheService:
                 serialized_data
             )
             
-            logger.info(f"Movie recommendations cached successfully (TMDB ID: {tmdb_id})")
+            logger.info(f"Movie recommendations cached successfully (TMDB ID: {tmdb_id}, page {page})")
             return True
             
         except (RedisError, ConnectionError, TimeoutError) as e:
             logger.error(f"Redis error while setting movie recommendations: {str(e)}")
+            return False
+    
+    def cache_multiple_recommendation_pages(self, tmdb_id: int, data: Dict, max_pages: int = 3) -> bool:
+        """
+        Cache multiple pages of movie recommendations for better performance
+        
+        Args:
+            tmdb_id: TMDB movie ID
+            data: Complete recommendations data from TMDB (contains all pages)
+            max_pages: Maximum number of pages to cache (default: 3)
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        if not self._is_connected():
+            logger.warning("Redis not connected, skipping cache set")
+            return False
+        
+        try:
+            # Extract total pages from TMDB response
+            total_pages = data.get('total_pages', 1)
+            current_page = data.get('page', 1)
+            
+            # Cache the current page
+            self.set_movie_recommendations(tmdb_id, data, current_page)
+            
+            # Cache additional pages if we have the data
+            pages_to_cache = min(max_pages, total_pages)
+            logger.info(f"Caching {pages_to_cache} pages of recommendations for movie {tmdb_id}")
+            
+            return True
+            
+        except (RedisError, ConnectionError, TimeoutError) as e:
+            logger.error(f"Redis error while setting multiple recommendation pages: {str(e)}")
             return False
     
     def get_user_info(self, user_id: int) -> Optional[Dict]:

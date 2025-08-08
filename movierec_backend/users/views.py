@@ -6,6 +6,9 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
 from utils.cache_service import cache_service
+from utils.pagination import StandardPagination
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .serializers import RegisterSerializer, FavoriteMovieSerializer, AddFavoriteMovieSerializer
 from .models import FavoriteMovie
 
@@ -93,13 +96,91 @@ class FavoriteMovieListView(generics.ListAPIView):
     View to list all favorite movies for the authenticated user.
     
     Returns a paginated list of movies the user has marked as favorites.
+    Features:
+    - Pagination support with customizable page size
+    - Ordered by most recently added
+    - Only shows favorites for the authenticated user
     """
     serializer_class = FavoriteMovieSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = StandardPagination
+    
+    @swagger_auto_schema(
+        operation_description="Get paginated list of user's favorite movies",
+        manual_parameters=[
+            openapi.Parameter(
+                'page',
+                openapi.IN_QUERY,
+                description="Page number for pagination (default: 1, min: 1)",
+                type=openapi.TYPE_INTEGER,
+                default=1,
+                minimum=1
+            ),
+            openapi.Parameter(
+                'page_size',
+                openapi.IN_QUERY,
+                description="Number of items per page (default: 20, max: 100)",
+                type=openapi.TYPE_INTEGER,
+                default=20,
+                maximum=100,
+                minimum=1
+            ),
+        ],
+        responses={
+            200: openapi.Response(
+                description="Successfully retrieved favorite movies",
+                examples={
+                    "application/json": {
+                        "success": True,
+                        "data": [
+                            {
+                                "id": 1,
+                                "tmdb_id": 123,
+                                "title": "Favorite Movie",
+                                "created_at": "2024-01-01T00:00:00Z"
+                            }
+                        ],
+                        "pagination": {
+                            "count": 150,
+                            "next": "http://localhost:8000/api/users/favorites/?page=3&page_size=20",
+                            "previous": "http://localhost:8000/api/users/favorites/?page=1&page_size=20",
+                            "current_page": 2,
+                            "total_pages": 8,
+                            "page_size": 20
+                        }
+                    }
+                }
+            ),
+            401: openapi.Response(
+                description="Authentication required",
+                examples={
+                    "application/json": {
+                        "detail": "Authentication credentials were not provided."
+                    }
+                }
+            ),
+            500: openapi.Response(
+                description="Internal server error",
+                examples={
+                    "application/json": {
+                        "success": False,
+                        "error": {
+                            "message": "An unexpected error occurred",
+                            "code": "INTERNAL_ERROR",
+                            "status_code": 500
+                        }
+                    }
+                }
+            )
+        },
+        tags=['users']
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
     
     def get_queryset(self):
-        """Return favorite movies for the current user"""
-        return FavoriteMovie.objects.filter(user=self.request.user)
+        """Return favorite movies for the current user, ordered by most recent"""
+        return FavoriteMovie.objects.filter(user=self.request.user).order_by('-created_at')
 
 class AddFavoriteMovieView(generics.CreateAPIView):
     """

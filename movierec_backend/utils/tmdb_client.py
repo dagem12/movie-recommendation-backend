@@ -101,13 +101,15 @@ class TMDbClient:
             logger.error(f"Unexpected error in TMDB API request for endpoint {endpoint}: {str(e)}")
             raise ExternalAPIException(f"Unexpected error: {str(e)}")
 
-    def get_trending_movies(self, time_window='day'):
+    def get_trending_movies(self, time_window='day', page=1):
         """Get trending movies with comprehensive error handling and input validation"""
         if time_window not in ['day', 'week']:
             raise ValueError("time_window must be 'day' or 'week'")
+        if page < 1:
+            raise ValueError("page must be greater than 0")
         
         try:
-            return self._make_request(f"trending/movie/{time_window}")
+            return self._make_request(f"trending/movie/{time_window}", params={'page': page})
         except Exception as e:
             logger.error(f"Error fetching trending movies: {str(e)}")
             raise
@@ -123,24 +125,28 @@ class TMDbClient:
             logger.error(f"Error fetching movie details for ID {movie_id}: {str(e)}")
             raise
 
-    def search_movies(self, query):
+    def search_movies(self, query, page=1):
         """Search movies with comprehensive error handling and input validation"""
         if not query or not query.strip():
             raise ValueError("query cannot be empty")
+        if page < 1:
+            raise ValueError("page must be greater than 0")
         
         try:
-            return self._make_request("search/movie", params={'query': query.strip()})
+            return self._make_request("search/movie", params={'query': query.strip(), 'page': page})
         except Exception as e:
             logger.error(f"Error searching movies for query '{query}': {str(e)}")
             raise
 
-    def get_movie_recommendations(self, movie_id):
+    def get_movie_recommendations(self, movie_id, page=1):
         """Get movie recommendations with comprehensive error handling and input validation"""
         if not movie_id or not str(movie_id).isdigit():
             raise ValueError("movie_id must be a valid integer")
+        if page < 1:
+            raise ValueError("page must be greater than 0")
         
         try:
-            return self._make_request(f"movie/{movie_id}/recommendations")
+            return self._make_request(f"movie/{movie_id}/recommendations", params={'page': page})
         except Exception as e:
             logger.error(f"Error fetching movie recommendations for ID {movie_id}: {str(e)}")
             raise
