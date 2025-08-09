@@ -6,6 +6,7 @@ A high-performance Django REST API for movie recommendations with intelligent ca
 [![Django](https://img.shields.io/badge/Django-5.2+-green.svg)](https://djangoproject.com)
 [![Redis](https://img.shields.io/badge/Redis-Cache-red.svg)](https://redis.io)
 [![Swagger](https://img.shields.io/badge/Swagger-Docs-orange.svg)](https://swagger.io)
+[![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://docker.com)
 
 ## 🚀 Features
 
@@ -56,6 +57,7 @@ A high-performance Django REST API for movie recommendations with intelligent ca
 | **Authentication** | JWT (SimpleJWT) | Secure user authentication |
 | **Documentation** | Swagger (drf-yasg) | Interactive API docs |
 | **Pagination** | Custom pagination classes | Consistent data pagination |
+| **Containerization** | Docker & Docker Compose | Easy deployment & scaling |
 
 ## 📁 Project Structure
 
@@ -237,16 +239,43 @@ gunicorn movierec_backend.wsgi:application --bind 0.0.0.0:8000
 ```
 
 ### Docker Deployment
-```dockerfile
-# Dockerfile example
-FROM python:3.9
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 8000
-CMD ["gunicorn", "movierec_backend.wsgi:application", "--bind", "0.0.0.0:8000"]
+
+The project includes comprehensive Docker support for easy deployment:
+
+#### Quick Start with Docker
+```bash
+# Copy environment template
+cp docker.env.example .env
+
+# Edit .env with your configuration
+# Then start services
+docker-compose up -d
+
+# Access your app at http://localhost:8000
 ```
+
+#### Available Docker Commands
+```bash
+# Development
+make up          # Start services
+make down        # Stop services
+make logs        # View logs
+make shell       # Django shell
+make migrate     # Run migrations
+
+# Production
+make production  # Start production stack
+make clean       # Clean up containers
+```
+
+#### Docker Files
+- `Dockerfile` - Development image
+- `Dockerfile.prod` - Production-optimized image
+- `docker-compose.yml` - Development stack
+- `docker-compose.prod.yml` - Production stack with Nginx
+- `nginx.conf` - Production Nginx configuration
+
+For detailed Docker deployment instructions, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md).
 
 ## 🤝 Contributing
 
