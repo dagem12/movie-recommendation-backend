@@ -114,7 +114,7 @@ movie-recommendation-backend/
 
 ### 1. Clone & Setup
 ```bash
-git clone https://github.com/yourusername/movie-recommendation-backend.git
+git clone https://github.com/dagem12/movie-recommendation-backend.git
 cd movie-recommendation-backend/movierec_backend
 python -m venv env
 source env/bin/activate  # On Windows: env\Scripts\activate
