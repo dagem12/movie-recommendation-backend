@@ -1,6 +1,6 @@
 # 🎬 Movie Recommendation Backend
 
-A high-performance Django REST API for movie recommendations with intelligent caching, comprehensive pagination, and enterprise-grade error handling.
+A high-performance Django REST API for movie recommendations with intelligent caching, comprehensive pagination, enterprise-grade error handling, and flexible system configuration management.
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-5.2+-green.svg)](https://djangoproject.com)
@@ -31,19 +31,34 @@ A high-performance Django REST API for movie recommendations with intelligent ca
 - **Error Recovery** - Graceful handling of external API failures
 - **Retry Logic** - Exponential backoff for failed requests
 
-## 🏗️ Architecture
+### ⚙️ System Configuration & Management
+- **Dynamic Settings Management** - JSON-based flexible configuration system
+- **Cache Administration** - Real-time cache monitoring and management
+- **Centralized Configuration** - Unified error handling and logging setup
+- **Admin Interface** - Django admin integration for system settings
 
-```
+## 🏗️ Architecture
+    
+                             
+                       ┌─────────────────┐
+                       │      Database   │
+                       │                 │
+                       └─────────────────┘
+```                            ▲
+                               │
+                               ▼
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Django API    │    │   External      │
 │   (Client)      │◄──►│   Backend       │◄──►│   Services      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
+                              ▲
                               │
                               ▼
                        ┌─────────────────┐
                        │   Redis Cache   │
                        │   (Performance) │
                        └─────────────────┘
+                          
 ```
 
 ## 🛠️ Tech Stack
@@ -58,8 +73,9 @@ A high-performance Django REST API for movie recommendations with intelligent ca
 | **Documentation** | Swagger (drf-yasg) | Interactive API docs |
 | **Pagination** | Custom pagination classes | Consistent data pagination |
 | **Containerization** | Docker & Docker Compose | Easy deployment & scaling |
+| **Configuration** | JSON-based Settings model | Dynamic system configuration |
 
-## 📁 Project Structure
+## 📁 Project Structure(highlight)
 
 ```
 movie-recommendation-backend/
@@ -72,11 +88,15 @@ movie-recommendation-backend/
 │   │   ├── views.py         # Auth & favorites endpoints
 │   │   ├── models.py        # User & favorites models
 │   │   └── serializers.py   # Data serialization
-│   ├── utils/               # Shared utilities
+│   ├── utils/               # Shared utilities & system management
 │   │   ├── tmdb_client.py   # TMDB API integration
 │   │   ├── cache_service.py # Redis caching service
 │   │   ├── pagination.py    # Custom pagination classes
-│   │   └── exceptions.py    # Custom error handling
+│   │   ├── exceptions.py    # Custom error handling
+│   │   ├── config.py        # Centralized configuration
+│   │   ├── models.py        # Settings management model
+│   │   ├── views.py         # Settings & cache management APIs
+│   │   └── admin.py         # Django admin integration
 │   └── movierec_backend/    # Project settings
 │       ├── settings.py      # Django configuration
 │       └── urls.py          # Main URL routing
@@ -134,11 +154,11 @@ Visit: **http://localhost:8000/api/docs/**
 ## 📚 API Endpoints
 
 ### 🔐 Authentication
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/users/register/` | POST | User registration |
-| `/api/users/login/` | POST | User login (JWT) |
-| `/api/users/token/refresh/` | POST | Refresh JWT token |
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/users/register/` | POST | ❌ | User registration |
+| `/api/users/login/` | POST | ❌ | User login (JWT) |
+| `/api/users/refresh/` | POST | ❌ | Refresh JWT token |
 
 ### 🎬 Movie Endpoints
 | Endpoint | Method | Auth | Description |
@@ -146,16 +166,43 @@ Visit: **http://localhost:8000/api/docs/**
 | `/api/movies/trending/` | GET | ❌ | Trending movies (day/week) |
 | `/api/movies/popular/` | GET | ❌ | Popular movies |
 | `/api/movies/search/` | GET | ❌ | Search movies |
-| `/api/movies/{id}/` | GET | ❌ | Movie details |
-| `/api/movies/{id}/recommendations/` | GET | ❌ | Movie recommendations |
+| `/api/movies/{movie_id}/` | GET | ❌ | Movie details |
+| `/api/movies/{movie_id}/recommendations/` | GET | ❌ | Movie recommendations |
 
-### 👤 User Endpoints
+### 👤 User Management
 | Endpoint | Method | Auth | Description |
 |----------|--------|------|-------------|
-| `/api/users/profile/` | GET | ✅ | User profile |
-| `/api/users/favorites/` | GET | ✅ | User favorites |
-| `/api/users/favorites/add/` | POST | ✅ | Add favorite |
-| `/api/users/favorites/{id}/` | DELETE | ✅ | Remove favorite |
+| `/api/users/profile/` | GET | ✅ | User profile information |
+
+### ⭐ Favorite Movies
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/users/favorites/` | GET | ✅ | List user's favorite movies (paginated) |
+| `/api/users/favorites/add/` | POST | ✅ | Add movie to favorites |
+| `/api/users/favorites/{pk}/remove/` | DELETE | ✅ | Remove movie from favorites |
+| `/api/users/favorites/check/{tmdb_id}/` | GET | ✅ | Check if movie is in favorites |
+
+
+### 🔧 System Management  
+| Endpoint | Method | Auth | Admin | Description |
+|----------|--------|------|-------|-------------|
+| `/api/utils/settings/` | GET | ✅ | ❌ | List all settings (paginated) |
+| `/api/utils/settings/` | POST | ✅ | ✅ | Create new setting |
+| `/api/utils/settings/{id}/` | GET | ✅ | ❌ | Get setting details |
+| `/api/utils/settings/{id}/` | PUT/PATCH | ✅ | ✅ | Update setting |
+| `/api/utils/settings/{id}/` | DELETE | ✅ | ✅ | Delete setting |
+| `/api/utils/settings/code/{setting_code}/` | GET | ✅ | ❌ | Get setting by code |
+| `/api/utils/cache/` | GET | ✅ | ✅ | Cache statistics and management |
+| `/api/utils/cache/` | DELETE | ✅ | ✅ | Clear all caches |
+| `/api/v2/system/metrics/` | GET | ❌ | ❌ | Comprehensive system health and metrics |
+
+### 📚 API Documentation
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/docs/` | GET | ❌ | Interactive Swagger API documentation |
+| `/api/redoc/` | GET | ❌ | ReDoc API documentation |
+| `/api/docs.json` | GET | ❌ | OpenAPI schema (JSON) |
+| `/api/docs.yaml` | GET | ❌ | OpenAPI schema (YAML) |
 
 ## 🔧 Key Features Explained
 
@@ -173,6 +220,18 @@ Visit: **http://localhost:8000/api/docs/**
 - **Custom Exceptions**: `ExternalAPIException`, `ValidationAPIException`, `RateLimitAPIException`
 - **Graceful Degradation**: Continues serving data when cache fails
 - **Comprehensive Logging**: All errors logged for monitoring
+
+### ⚙️ Settings Management System
+- **Flexible Configuration**: JSON-based settings storage for any configuration type
+- **Dynamic Updates**: Runtime configuration changes without restart
+- **Admin Interface**: User-friendly Django admin for system configuration
+- **Code-Based Access**: Retrieve settings by unique code identifiers
+- **Validation**: Automatic JSON validation and error handling
+
+### 🔍 Cache Management
+- **Real-time Monitoring**: Live cache statistics and performance metrics
+- **Administrative Control**: Admin-only cache clearing and management
+- **Performance Insights**: Detailed cache hit/miss ratios and memory usage
 
 ## 📊 Response Format
 
@@ -222,6 +281,20 @@ curl "http://localhost:8000/api/movies/trending/?time_window=day&page=2"
 curl "http://localhost:8000/api/movies/trending/?time_window=day&page=3"
 ```
 
+### Test Settings Management
+```bash
+# Get all settings (requires auth)
+curl -H "Authorization: Bearer <token>" "http://localhost:8000/api/utils/settings/"
+
+# Get setting by code
+curl -H "Authorization: Bearer <token>" "http://localhost:8000/api/utils/settings/code/theme_config/"
+
+# Create new setting (admin only)
+curl -X POST -H "Authorization: Bearer <admin_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"setting_code": "api_limits", "setting_value": {"max_requests": 1000, "timeout": 30}}' \
+  "http://localhost:8000/api/utils/settings/"
+```
 
 ## 🚀 Deployment
 
@@ -291,11 +364,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **API Documentation**: http://localhost:8000/api/docs/
-- **ReDoc Documentation**: http://localhost:8000/api/redoc/
-- **Admin Panel**: http://localhost:8000/admin/
+- **API Documentation**: http://your_server_ip:port/api/docs/
+- **ReDoc Documentation**: http://your_server_ip:port/api/redoc/
+- **Admin Panel**: http://your_server_ip:port/admin/
 
 
 ---
-
-

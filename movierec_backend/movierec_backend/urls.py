@@ -21,7 +21,6 @@ from django.http import JsonResponse
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from utils.views import SystemMetricsView
 
 # Health check view
 def health_check(request):
@@ -61,7 +60,4 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/movies/', include('movies.urls')),
     path('api/utils/', include('utils.urls')),
-    
-    # System metrics endpoint for monitoring (v2 API)
-    path('api/v2/system/metrics/', SystemMetricsView.as_view(), name='system-metrics'),
 ]
