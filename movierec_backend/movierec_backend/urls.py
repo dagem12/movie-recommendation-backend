@@ -17,9 +17,18 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import RedirectView
+from django.http import JsonResponse
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+
+# Health check view
+def health_check(request):
+    return JsonResponse({
+        'status': 'healthy',
+        'service': 'movie-recommendation-backend',
+        'timestamp': '2025-01-27T12:00:00Z'
+    })
 
 # Swagger Schema View
 schema_view = get_schema_view(
@@ -38,6 +47,9 @@ schema_view = get_schema_view(
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', RedirectView.as_view(url='/api/docs/', permanent=False)),
+    
+    # Health check endpoint for Docker
+    path('health/', health_check, name='health_check'),
     
     # API Documentation URLs
     re_path(r'^api/docs(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
