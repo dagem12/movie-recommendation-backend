@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -14,7 +14,12 @@ from .serializers import (
     SettingsCreateSerializer, 
     SettingsUpdateSerializer
 )
+from django.utils import timezone
+from django.db import connection
+from django.core.cache import cache
 import logging
+import redis
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -781,3 +786,231 @@ class SettingsByCodeView(APIView):
                 'success': False,
                 'error': 'Failed to retrieve setting'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SystemMetricsView(APIView):
+    """
+    System metrics endpoint for external monitoring systems.
+    
+    This endpoint provides basic health and metrics information
+    for monitoring tools that expect /api/v2/system/metrics.
+    """
+    permission_classes = [IsAuthenticated, IsAdminUser] # to allow monitoring tools to access it change to [AllowAny]
+    
+    @swagger_auto_schema(
+        operation_description="Get system health and metrics with real-time health checks",
+        responses={
+            200: openapi.Response(
+                description="System metrics retrieved successfully",
+                examples={
+                    "application/json": {
+                        "status": "healthy",
+                        "timestamp": "2025-08-09T12:00:00Z",
+                        "version": "v1.0.0",
+                        "service": "movie-recommendation-api",
+                        "response_time_ms": 150.5,
+                        "checks": {
+                            "database": {
+                                "status": "healthy",
+                                "response_time_ms": 45.2,
+                                "details": ""
+                            },
+                            "redis": {
+                                "status": "healthy", 
+                                "response_time_ms": 12.8,
+                                "details": ""
+                            },
+                            "external_api": {
+                                "status": "degraded",
+                                "response_time_ms": 1250.0,
+                                "details": "Slow response time"
+                            }
+                        },
+                        "metrics": {
+                            "total_checks": 3,
+                            "healthy_checks": 2,
+                            "degraded_checks": 1,
+                            "unhealthy_checks": 0
+                        }
+                    }
+                }
+            ),
+            503: openapi.Response(
+                description="Service unavailable - critical services are down",
+                examples={
+                    "application/json": {
+                        "status": "unhealthy",
+                        "timestamp": "2025-08-09T12:00:00Z",
+                        "version": "v1.0.0",
+                        "service": "movie-recommendation-api",
+                        "response_time_ms": 5000.0,
+                        "checks": {
+                            "database": {
+                                "status": "unhealthy",
+                                "response_time_ms": 0,
+                                "details": "Connection failed: timeout"
+                            }
+                        }
+                    }
+                }
+            )
+        },
+        tags=['System Management']
+    )
+    def get(self, request):
+        """Return system metrics and health status with real health checks"""
+        start_time = time.time()
+        
+        # Perform health checks
+        db_health = self._check_database_health()
+        redis_health = self._check_redis_health()
+        api_health = self._check_external_api_health()
+        
+        # Determine overall status
+        all_checks = [db_health, redis_health, api_health]
+        overall_status = 'healthy' if all(check['status'] == 'healthy' for check in all_checks) else 'degraded'
+        
+        # If any critical service is down, mark as unhealthy
+        if db_health['status'] == 'unhealthy':
+            overall_status = 'unhealthy'
+        
+        response_time = round((time.time() - start_time) * 1000, 2)  # ms
+        
+        health_data = {
+            'status': overall_status,
+            'timestamp': timezone.now().isoformat(),
+            'version': 'v1.0.0',
+            'service': 'movie-recommendation-api',
+            'response_time_ms': response_time,
+            'checks': {
+                'database': {
+                    'status': db_health['status'],
+                    'response_time_ms': db_health['response_time'],
+                    'details': db_health.get('details', '')
+                },
+                'redis': {
+                    'status': redis_health['status'],
+                    'response_time_ms': redis_health['response_time'],
+                    'details': redis_health.get('details', '')
+                },
+                'external_api': {
+                    'status': api_health['status'],
+                    'response_time_ms': api_health['response_time'],
+                    'details': api_health.get('details', '')
+                }
+            },
+            'metrics': {
+                'total_checks': len(all_checks),
+                'healthy_checks': sum(1 for check in all_checks if check['status'] == 'healthy'),
+                'degraded_checks': sum(1 for check in all_checks if check['status'] == 'degraded'),
+                'unhealthy_checks': sum(1 for check in all_checks if check['status'] == 'unhealthy')
+            }
+        }
+        
+        # Return appropriate status code based on health
+        if overall_status == 'unhealthy':
+            return Response(health_data, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        elif overall_status == 'degraded':
+            return Response(health_data, status=status.HTTP_200_OK)
+        else:
+            return Response(health_data, status=status.HTTP_200_OK)
+    
+    def _check_database_health(self):
+        """Check database connectivity and performance"""
+        try:
+            start_time = time.time()
+            
+            # Simple database query to check connectivity
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                cursor.fetchone()
+            
+            response_time = round((time.time() - start_time) * 1000, 2)
+            
+            # Check if response time is acceptable (< 100ms is good, < 500ms is acceptable)
+            if response_time < 100:
+                return {'status': 'healthy', 'response_time': response_time}
+            elif response_time < 500:
+                return {'status': 'degraded', 'response_time': response_time, 'details': 'Slow response time'}
+            else:
+                return {'status': 'degraded', 'response_time': response_time, 'details': 'Very slow response time'}
+                
+        except Exception as e:
+            logger.error(f"Database health check failed: {str(e)}")
+            return {'status': 'unhealthy', 'response_time': 0, 'details': f'Connection failed: {str(e)}'}
+    
+    def _check_redis_health(self):
+        """Check Redis connectivity and performance"""
+        try:
+            start_time = time.time()
+            
+            # Test Redis connection using Django's cache framework
+            test_key = 'health_check_test'
+            test_value = 'test_value'
+            
+            # Set and get a test value
+            cache.set(test_key, test_value, 30)  # 30 seconds timeout
+            retrieved_value = cache.get(test_key)
+            
+            if retrieved_value == test_value:
+                cache.delete(test_key)  # Clean up
+                response_time = round((time.time() - start_time) * 1000, 2)
+                
+                if response_time < 50:
+                    return {'status': 'healthy', 'response_time': response_time}
+                elif response_time < 200:
+                    return {'status': 'degraded', 'response_time': response_time, 'details': 'Slow response time'}
+                else:
+                    return {'status': 'degraded', 'response_time': response_time, 'details': 'Very slow response time'}
+            else:
+                return {'status': 'unhealthy', 'response_time': 0, 'details': 'Value mismatch in cache test'}
+                
+        except Exception as e:
+            logger.error(f"Redis health check failed: {str(e)}")
+            return {'status': 'unhealthy', 'response_time': 0, 'details': f'Connection failed: {str(e)}'}
+    
+    def _check_external_api_health(self):
+        """Check TMDB API connectivity and performance"""
+        try:
+            start_time = time.time()
+            
+            # Use a simple direct request to check TMDB API health
+            import requests
+            from django.conf import settings
+            
+            api_key = getattr(settings, 'TMDB_API_KEY', None)
+            if not api_key:
+                return {'status': 'degraded', 'response_time': 0, 'details': 'TMDB API key not configured'}
+            
+            # Simple request to configuration endpoint (lightweight)
+            url = 'https://api.themoviedb.org/3/configuration'
+            params = {'api_key': api_key}
+            
+            response = requests.get(url, params=params, timeout=5)
+            response_time = round((time.time() - start_time) * 1000, 2)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data and data.get('images'):
+                    if response_time < 1000:  # < 1 second
+                        return {'status': 'healthy', 'response_time': response_time}
+                    elif response_time < 3000:  # < 3 seconds
+                        return {'status': 'degraded', 'response_time': response_time, 'details': 'Slow response time'}
+                    else:
+                        return {'status': 'degraded', 'response_time': response_time, 'details': 'Very slow response time'}
+                else:
+                    return {'status': 'unhealthy', 'response_time': response_time, 'details': 'Invalid response structure'}
+            elif response.status_code == 401:
+                return {'status': 'degraded', 'response_time': response_time, 'details': 'API key authentication failed'}
+            elif response.status_code == 429:
+                return {'status': 'degraded', 'response_time': response_time, 'details': 'Rate limit exceeded'}
+            else:
+                return {'status': 'degraded', 'response_time': response_time, 'details': f'HTTP {response.status_code}'}
+                
+        except requests.exceptions.Timeout:
+            return {'status': 'degraded', 'response_time': 5000, 'details': 'Request timeout'}
+        except requests.exceptions.ConnectionError:
+            return {'status': 'degraded', 'response_time': 0, 'details': 'Connection failed'}
+        except Exception as e:
+            logger.error(f"TMDB API health check failed: {str(e)}")
+            return {'status': 'degraded', 'response_time': 0, 'details': f'API check failed: {str(e)}'}

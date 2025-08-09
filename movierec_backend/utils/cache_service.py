@@ -380,13 +380,16 @@ class RedisCacheService:
         
         try:
             info = self.redis_client.info()
+            dbsize = self.redis_client.dbsize()
+    
             return {
                 "status": "connected",
                 "used_memory": info.get("used_memory_human", "N/A"),
                 "connected_clients": info.get("connected_clients", 0),
                 "total_commands_processed": info.get("total_commands_processed", 0),
                 "keyspace_hits": info.get("keyspace_hits", 0),
-                "keyspace_misses": info.get("keyspace_misses", 0)
+                "keyspace_misses": info.get("keyspace_misses", 0),
+                "total_keys": dbsize
             }
         except (RedisError, ConnectionError, TimeoutError) as e:
             logger.error(f"Redis error while getting stats: {str(e)}")
