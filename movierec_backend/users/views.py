@@ -9,7 +9,7 @@ from utils.cache_service import cache_service
 from utils.pagination import StandardPagination
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from .serializers import RegisterSerializer, FavoriteMovieSerializer, AddFavoriteMovieSerializer
+from .serializers import RegisterSerializer, FavoriteMovieSerializer, AddFavoriteMovieSerializer, UserInfoSerializer
 from .models import FavoriteMovie
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -40,6 +40,7 @@ class UserInfoView(generics.RetrieveAPIView):
     - Caches user data for 15 minutes
     - Invalidates cache when user data changes
     """
+    serializer_class = UserInfoSerializer
     permission_classes = [IsAuthenticated]
     
     def get(self, request, *args, **kwargs):
@@ -180,6 +181,9 @@ class FavoriteMovieListView(generics.ListAPIView):
     
     def get_queryset(self):
         """Return favorite movies for the current user, ordered by most recent"""
+        # Handle schema generation case where request.user is AnonymousUser
+        if getattr(self, 'swagger_fake_view', False):
+            return FavoriteMovie.objects.none()
         return FavoriteMovie.objects.filter(user=self.request.user).order_by('-created_at')
 
 class AddFavoriteMovieView(generics.CreateAPIView):
@@ -227,6 +231,9 @@ class RemoveFavoriteMovieView(generics.DestroyAPIView):
     
     def get_queryset(self):
         """Return only favorite movies belonging to the current user"""
+        # Handle schema generation case where request.user is AnonymousUser
+        if getattr(self, 'swagger_fake_view', False):
+            return FavoriteMovie.objects.none()
         return FavoriteMovie.objects.filter(user=self.request.user)
     
     def destroy(self, request, *args, **kwargs):
@@ -253,6 +260,10 @@ class CheckFavoriteMovieView(generics.RetrieveAPIView):
     
     def get_object(self):
         """Get favorite movie by TMDB ID for current user"""
+        # Handle schema generation case where request.user is AnonymousUser
+        if getattr(self, 'swagger_fake_view', False):
+            return None
+        
         tmdb_id = self.kwargs.get('tmdb_id')
         try:
             return FavoriteMovie.objects.get(user=self.request.user, tmdb_id=tmdb_id)

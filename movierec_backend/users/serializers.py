@@ -56,3 +56,18 @@ class AddFavoriteMovieSerializer(serializers.Serializer):
             defaults=validated_data
         )
         return favorite
+
+class UserInfoSerializer(serializers.Serializer):
+    """
+    Serializer for user information response.
+    
+    Defines the schema for user profile data returned by UserInfoView.
+    """
+    id = serializers.IntegerField(help_text="User ID")
+    username = serializers.CharField(help_text="Username")
+    email = serializers.EmailField(help_text="User email address")
+    date_joined = serializers.DateTimeField(help_text="Date when user joined")
+    last_login = serializers.DateTimeField(allow_null=True, help_text="Last login timestamp")
+    is_active = serializers.BooleanField(help_text="Whether user account is active")
+    is_staff = serializers.BooleanField(help_text="Whether user has staff privileges")
+    favorites_count = serializers.IntegerField(help_text="Number of favorite movies")
