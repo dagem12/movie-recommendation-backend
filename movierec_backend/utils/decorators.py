@@ -146,7 +146,6 @@ def rate_limit(max_requests=100, window_seconds=60):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
             # This is a basic implementation
-            # In production, you should use Redis or database-based rate limiting
             client_ip = request.META.get('REMOTE_ADDR', 'unknown')
             
             # For now, just log the request
@@ -171,7 +170,6 @@ def cache_response(timeout=300):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
             # This is a basic implementation
-            # In production, you should use Django's cache framework
             cache_key = f"{func.__name__}_{request.path}_{request.GET.urlencode()}"
             
             # For now, just log the cache attempt
